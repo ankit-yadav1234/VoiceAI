@@ -205,24 +205,20 @@ export default function Home() {
         </AnimatePresence>
       </main>
 
-      {/* Footer */}
       <footer className="py-16 px-8 border-t border-white/5 bg-slate-950/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
-          <div className="flex items-center gap-3 opacity-70 scale-110">
-            <div className="w-6 h-6 rounded bg-blue-500 shadow-lg shadow-blue-500/20" />
-            <span className="text-sm font-bold tracking-[0.2em] uppercase text-white/90">Ankit Yadav</span>
-          </div>
-          <div className="flex flex-col items-center md:items-start gap-1">
-            <p className="text-slate-400 text-sm font-bold tracking-wider">
+        <div className="max-w-6xl mx-auto flex flex-col items-center justify-center gap-8">
+          <div className="flex flex-col items-center justify-center gap-2 text-center">
+            <p className="text-slate-400 text-lg font-bold tracking-[0.2em] uppercase">
               Ankit Yadav
             </p>
-            <p className="text-slate-500 text-xs flex items-center gap-1.5">
+            <p className="text-slate-500 text-sm flex items-center justify-center gap-2">
               Copyright © 2026 Ankit Yadav | All Rights Reserved <span className="text-red-500 animate-pulse">❤️</span>
             </p>
           </div>
-          <div className="flex items-center gap-8 opacity-70">
-            <a href="https://www.linkedin.com/in/ankit-yadav-one9/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-4">LinkedIn</a>
-            <a href="https://github.com/ankit-yadav1234" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-4">GitHub</a>
+
+          <div className="flex items-center gap-8 opacity-60">
+            <a href="https://www.linkedin.com/in/ankit-yadav-one9/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-8">LinkedIn</a>
+            <a href="https://github.com/ankit-yadav1234" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-8">GitHub</a>
           </div>
         </div>
       </footer>
