@@ -206,7 +206,10 @@ export default function Home() {
       </main>
 
       <footer className="py-16 px-8 border-t border-white/5 bg-slate-950/50 backdrop-blur-sm">
-        <div className="max-w-6xl mx-auto flex flex-col items-center justify-center gap-8">
+        <div className="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-8">
+          {/* Spacer to keep center text truly centered on desktop */}
+          <div className="hidden md:block w-[200px]" />
+
           <div className="flex flex-col items-center justify-center gap-2 text-center">
             <p className="text-slate-400 text-lg font-bold tracking-[0.2em] uppercase">
               Ankit Yadav
@@ -216,7 +219,7 @@ export default function Home() {
             </p>
           </div>
 
-          <div className="flex items-center gap-8 opacity-60">
+          <div className="flex items-center gap-8 opacity-60 w-auto md:w-[200px] justify-center md:justify-end">
             <a href="https://www.linkedin.com/in/ankit-yadav-one9/" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-8">LinkedIn</a>
             <a href="https://github.com/ankit-yadav1234" target="_blank" rel="noopener noreferrer" className="text-sm font-medium hover:text-white transition-colors hover:underline underline-offset-8">GitHub</a>
           </div>
