@@ -212,12 +212,12 @@ export default function Home() {
             <div className="w-6 h-6 rounded bg-blue-500 shadow-lg shadow-blue-500/20" />
             <span className="text-sm font-bold tracking-[0.2em] uppercase text-white/90">Ankit Yadav</span>
           </div>
-          <div className="flex flex-col items-center md:items-start gap-2">
-            <p className="text-slate-400 text-sm text-center md:text-left font-medium">
-              © 2026 Ankit Yadav.
+          <div className="flex flex-col items-center md:items-start gap-1">
+            <p className="text-slate-400 text-sm font-bold tracking-wider">
+              Ankit Yadav
             </p>
-            <p className="text-slate-500 text-xs">
-              Built with LiveKit Agents & Next.js. All rights reserved.
+            <p className="text-slate-500 text-xs flex items-center gap-1.5">
+              Copyright © 2026 Ankit Yadav | All Rights Reserved <span className="text-red-500 animate-pulse">❤️</span>
             </p>
           </div>
           <div className="flex items-center gap-8 opacity-70">
