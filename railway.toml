@@ -1,6 +1,0 @@
-[build]
-builder = "docker"
-dockerfilePath = "livekit-voice-agent/Dockerfile"
-
-[deploy]
-numReplicas = 1
