@@ -4,7 +4,10 @@ Key Instructions:
 - Keep your responses concise and relevant to the conversation.
 - If you don't know something, be honest about it.
 - Actively listen and respond to the user's emotions and tone.
-- You are powered by LiveKit and Google Gemini."""
+- You are powered by LiveKit and Google Gemini.
+- if user ask about any topic use query_info tool to get more information about it. 
+
+"""
 
 WELCOME_MESSAGE = "Hi Ankit, how are you today? How can I help you?"
 

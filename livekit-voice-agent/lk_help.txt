@@ -1,0 +1,24 @@
+NAME:
+   lk agent deploy - Deploy a new version of the agent
+
+USAGE:
+   lk agent deploy [options] [working-dir]
+
+OPTIONS:
+   --secrets string [ --secrets string ]            KEY=VALUE comma separated secrets. These will be injected as environment variables into the agent. These take precedence over secrets-file.
+   --secrets-file FILE                              FILE containing secret KEY=VALUE pairs, one per line. These will be injected as environment variables into the agent.
+   --secret-mount string [ --secret-mount string ]  Local path to a secret file to be mounted on agent environment
+   --silent                                         If set, will not prompt for confirmation (default: false)
+   --ignore-empty-secrets                           If set, will skip environment variables with empty values from secrets files instead of failing (default: false)
+   --help, -h                                       show help
+
+GLOBAL OPTIONS:
+   --url URL              URL to LiveKit instance (default: "http://localhost:7880") [%LIVEKIT_URL%]
+   --api-key KEY          Your KEY [%LIVEKIT_API_KEY%]
+   --api-secret SECRET    Your SECRET [%LIVEKIT_API_SECRET%]
+   --dev                  Use developer credentials for local LiveKit server (default: false)
+   --project NAME         NAME of a configured project
+   --subdomain SUBDOMAIN  SUBDOMAIN of a configured project
+   --config TOML          Config TOML to use in the working directory (default: "livekit.toml")
+   --curl                 Print curl commands for API actions (default: false)
+   --verbose              (default: false)

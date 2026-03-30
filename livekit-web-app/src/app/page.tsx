@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useMemo } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -85,14 +85,17 @@ export default function Home() {
             <a href="#" className="hover:text-white transition-colors underline-offset-4 hover:underline">Pricing</a>
           </div>
           {connectionDetails && (
-            <Button
-              variant="outline"
-              size="lg"
-              onClick={onDisconnect}
-              className="border-red-500/20 text-red-400 bg-red-400/5 hover:bg-red-400/10 h-11 px-6 text-base font-semibold"
-            >
-              End Session
-            </Button>
+            <div className="flex items-center gap-4">
+              <SessionTimer />
+              <Button
+                variant="outline"
+                size="lg"
+                onClick={onDisconnect}
+                className="border-red-500/20 text-red-400 bg-red-400/5 hover:bg-red-400/10 h-11 px-6 text-base font-semibold"
+              >
+                End Session
+              </Button>
+            </div>
           )}
         </div>
       </nav>
@@ -413,5 +416,35 @@ function AssistantTranscript() {
       })}
       agentState={state}
     />
+  );
+}
+
+function SessionTimer() {
+  const [timeLeft, setTimeLeft] = useState(180);
+
+  useEffect(() => {
+    if (timeLeft <= 0) return;
+    
+    const interval = setInterval(() => {
+      setTimeLeft(prev => prev - 1);
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [timeLeft]);
+
+  const minutes = Math.floor(timeLeft / 60);
+  const seconds = timeLeft % 60;
+  
+  if (timeLeft === 0) {
+    return (
+      <div className="flex items-center gap-2 px-4 py-2 bg-red-500/20 text-red-500 font-bold rounded-full animate-pulse border border-red-500/30 text-sm shadow-[0_0_15px_rgba(239,68,68,0.2)]">
+        Thanks for using! Session Ended.
+      </div>
+    );
+  }
+
+  return (
+    <div className={`flex items-center gap-2 px-4 py-2 rounded-full font-mono font-bold border transition-colors text-sm shadow-inner ${timeLeft < 30 ? 'bg-red-500/20 text-red-400 border-red-500/30 animate-pulse shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'bg-blue-500/10 text-blue-400 border-blue-500/20'}`}>
+      ⏱️ {String(minutes).padStart(2, '0')}:{String(seconds).padStart(2, '0')} remaining
+    </div>
   );
 }

@@ -1,0 +1,25 @@
+NAME:
+   lk agent init - Initialize a new LiveKit Cloud agent project
+
+USAGE:
+   lk agent init [options] [AGENT-NAME]
+
+OPTIONS:
+   --region string      Region to deploy the agent to. If unset, will deploy to the nearest region.
+   --help, -h           show help
+   --deploy             If set, automatically deploys the agent to LiveKit Cloud after initialization. (default: false)
+   --template TEMPLATE  TEMPLATE to instantiate, see https://github.com/livekit-examples
+   --template-url URL   URL to instantiate, must contain a taskfile.yaml
+   --sandbox NAME       NAME of the sandbox, see your cloud dashboard
+   --no-sandbox         If set, will not create a sandbox for the project.  (default: false)
+
+GLOBAL OPTIONS:
+   --url URL              URL to LiveKit instance (default: "http://localhost:7880") [%LIVEKIT_URL%]
+   --api-key KEY          Your KEY [%LIVEKIT_API_KEY%]
+   --api-secret SECRET    Your SECRET [%LIVEKIT_API_SECRET%]
+   --dev                  Use developer credentials for local LiveKit server (default: false)
+   --project NAME         NAME of a configured project
+   --subdomain SUBDOMAIN  SUBDOMAIN of a configured project
+   --config TOML          Config TOML to use in the working directory (default: "livekit.toml")
+   --curl                 Print curl commands for API actions (default: false)
+   --verbose              (default: false)
