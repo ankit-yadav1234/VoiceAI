@@ -12,7 +12,7 @@ Key Instructions:
 WELCOME_MESSAGE = "Hi Ankit, how are you today? How can I help you?"
 
 AGENT_CONFIG = {
-    "model": "gemini-2.5-flash-native-audio-preview-12-2025",
+    "model": "gemini-2.5-flash-preview-tts",
     "voice": "Puck",
     "temperature": 0.8,
     "agent_name": "my-agent",

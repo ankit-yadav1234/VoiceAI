@@ -1,0 +1,14 @@
+Vercel CLI 49.1.2
+Fetching projects in ankit-yadav1234s-projects
+> Projects found under ankit-yadav1234s-projects  [2s]
+
+  Project Name             Latest Production URL                                                 Updated   Node Version   
+  livekit-web-app          https://livekit-web-app.vercel.app                                    5m        24.x           
+  ankit-one9               https://ankit-one9.vercel.app                                         22h       24.x           
+  mobilerepaired           https://mobilerepaired.vercel.app                                     1d        24.x           
+  blog-diary               https://blog-diary-flame.vercel.app                                   1d        24.x           
+  voice-ai                 https://voice-ai-ebon.vercel.app                                      35d       24.x           
+  itemapi                  https://itemapi.vercel.app                                            53d       24.x           
+  portfolio-h34o           https://portfolio-h34o.vercel.app                                     96d       22.x           
+  protopage-landing-page   https://protopage-landing-page-ankit-yadav1234s-projects.vercel.app   96d       22.x           
+
