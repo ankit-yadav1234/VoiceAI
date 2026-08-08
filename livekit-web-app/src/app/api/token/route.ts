@@ -25,8 +25,13 @@ export async function GET(request: Request) {
             canPublishData: true,
       });
 
-      // Note: We are now using explicit dispatch via /api/dispatch in the frontend
-      // so we don't need the automatic RoomConfiguration here.
+      (at as any).roomConfig = new RoomConfiguration({
+            agents: [
+                  new RoomAgentDispatch({
+                        agentName: 'my-agent',
+                  }),
+            ],
+      });
 
       return NextResponse.json({
             token: await at.toJwt(),

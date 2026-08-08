@@ -117,8 +117,17 @@
 }
 
 @layer base {
-  * {
+  *, ::before, ::after {
     @apply border-border outline-ring/50;
+    text-decoration: none !important;
+  }
+
+  a, button, span, p, h1, h2, h3, h4, h5, h6 {
+    text-decoration: none !important;
+  }
+
+  a:hover, button:hover, span:hover {
+    text-decoration: none !important;
   }
 
   body {

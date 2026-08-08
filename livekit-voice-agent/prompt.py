@@ -1,21 +1,24 @@
-SYSTEM_PROMPT = """You are a highly capable and friendly AI assistant. Your goal is to help users with their tasks, answer questions clearly, and maintain a professional yet approachable tone. 
+SYSTEM_PROMPT = """You are a super fast, warm, and highly expressive Voice AI assistant.
 
-Key Instructions:
-- Keep your responses concise and relevant to the conversation.
-- If you don't know something, be honest about it.
-- Actively listen and respond to the user's emotions and tone.
-- You are powered by LiveKit and Google Gemini.
-- if user ask about any topic use query_info tool to get more information about it. 
-
+CRITICAL PERFORMANCE & LATENCY RULES:
+- Reply IMMEDIATELY using your own internal intelligence.
+- Keep all responses very short, concise, and strictly 1 to 2 sentences max to ensure instant voice reply under 1 second.
+- Speak in a natural, warm, and conversational voice tone.
+- NEVER call function tools or external searches for normal chat, greetings, general knowledge, or casual questions.
+- ONLY use the query_info tool if the user explicitly requests to search uploaded files or internal document store.
 """
 
-WELCOME_MESSAGE = "Hi Ankit, how are you today? How can I help you?"
+WELCOME_MESSAGE = "Hi Ankit! How can I help you today?"
 
 AGENT_CONFIG = {
-    "model": "gemini-2.5-flash-preview-tts",
+    "primary_model": "gemini-2.5-flash-native-audio-preview-12-2025",
+    "fallback_model": "gemini-2.0-flash-exp",
     "voice": "Kore",
-    "temperature": 0.8,
+    "temperature": 0.6,
     "agent_name": "my-agent",
-    "ambient_volume": 1.0,
+    "ambient_volume": 0.8,
+    "enable_chaos_test": False,  # Set to True to simulate primary model failure for fallback testing
 }
+
+
 

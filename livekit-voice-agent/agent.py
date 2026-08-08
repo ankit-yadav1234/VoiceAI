@@ -57,8 +57,8 @@ class DefaultAgent(Agent):
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions=f"Greet user with \"{WELCOME_MESSAGE}\"",
-            allow_interruptions=False,
+            instructions=f"Greet the user warmly with exact words: '{WELCOME_MESSAGE}'",
+            allow_interruptions=True,
         )
 
 
@@ -105,13 +105,22 @@ def _build_index():
         return idx
 
 
-index = _build_index()
+_global_index = None
+
+
+def get_index():
+    """Lazily load the index on first tool invocation rather than blocking startup."""
+    global _global_index
+    if _global_index is None:
+        _global_index = _build_index()
+    return _global_index
 
 
 @llm.function_tool
 async def query_info(query: str) -> str:
-    """Get more information about a specific topic. Use this tool whenever the user asks a question about any topic."""
-    retriever = index.as_retriever(similarity_top_k=3)
+    """Search internal knowledge base files ONLY when user explicitly asks about uploaded files or internal project documents."""
+    idx = get_index()
+    retriever = idx.as_retriever(similarity_top_k=3)
     nodes = await retriever.aretrieve(query)
     if not nodes:
         return "No relevant information found."
@@ -125,21 +134,45 @@ async def query_info(query: str) -> str:
 
 
 
+def get_resilient_llm():
+    """Builds a resilient LLM with FallbackAdapter, supporting primary to secondary failover and chaos testing."""
+    enable_chaos = AGENT_CONFIG.get("enable_chaos_test", False)
+    primary_model = "invalid-chaos-model-name" if enable_chaos else AGENT_CONFIG.get("primary_model", "gemini-2.5-flash-native-audio-preview-12-2025")
+    fallback_model = AGENT_CONFIG.get("fallback_model", "gemini-2.5-flash-native-audio-preview-12-2025")
+
+    if enable_chaos:
+        logger.warning("[CHAOS TEST] Chaos mode active: Primary model set to invalid name to verify fallback failover.")
+
+    try:
+        logger.info(f"Initializing primary Realtime LLM ({primary_model})...")
+        return google.realtime.RealtimeModel(
+            model=primary_model,
+            voice=AGENT_CONFIG["voice"],
+            temperature=AGENT_CONFIG["temperature"],
+            instructions=SYSTEM_PROMPT,
+        )
+    except Exception as err:
+        logger.error(f"Primary model initialization failed: {err}. Degrading gracefully to fallback model ({fallback_model}).")
+        return google.realtime.RealtimeModel(
+            model=fallback_model,
+            voice=AGENT_CONFIG["voice"],
+            temperature=AGENT_CONFIG["temperature"],
+            instructions=SYSTEM_PROMPT,
+        )
+
 server = AgentServer()
 
 @server.rtc_session(agent_name=AGENT_CONFIG["agent_name"])
 async def entrypoint(ctx: JobContext):
-    
-
+    # Initialize Realtime Session with ultra-low latency & preemptive generation flags
     session = AgentSession(
-        llm=google.realtime.RealtimeModel(
-            model=AGENT_CONFIG["model"],
-            voice=AGENT_CONFIG["voice"],
-            temperature=AGENT_CONFIG["temperature"],
-            instructions=SYSTEM_PROMPT,
-        ),
+        llm=get_resilient_llm(),
         tools=[query_info],
+        preemptive_generation=True,
+        min_endpointing_delay=0.15,
+        max_endpointing_delay=1.2,
     )
+
 
 
     await session.start(
@@ -152,12 +185,6 @@ async def entrypoint(ctx: JobContext):
         ),
     )
 
-    background_audio = BackgroundAudioPlayer(
-        ambient_sound=AudioConfig(BuiltinAudioClip.OFFICE_AMBIENCE, volume=AGENT_CONFIG["ambient_volume"]),
-    )
-
-    await background_audio.start(room=ctx.room, agent_session=session)
-    
     # ----------------------------------------------------
     # ANTI-ABUSE: Auto-Disconnect Timer (3 Minutes)
     # ----------------------------------------------------
@@ -166,7 +193,7 @@ async def entrypoint(ctx: JobContext):
             # Wait for 3 minutes (180 seconds)
             await asyncio.sleep(180)
             logger.info("Session hit 3-minute hard limit. Automatically disconnecting to save quotas.")
-            await session.generate_reply("My 3-minute limit is up to save API usage! Disconnecting now, goodbye!")
+            await session.generate_reply(instructions="My 3-minute limit is up to save API usage! Disconnecting now, goodbye!")
             # Give it a second to say goodbye
             await asyncio.sleep(4)
         except Exception as e:

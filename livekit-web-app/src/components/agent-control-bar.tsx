@@ -275,7 +275,7 @@ export function AgentControlBar({
     microphone: controls?.microphone ?? publishPermissions.microphone,
     screenShare: controls?.screenShare ?? publishPermissions.screenShare,
     camera: controls?.camera ?? publishPermissions.camera,
-    chat: controls?.chat ?? publishPermissions.data,
+    chat: controls?.chat ?? false,
   };
 
   const isEmpty = Object.values(visibleControls).every((value) => !value);
@@ -295,18 +295,7 @@ export function AgentControlBar({
       )}
       {...props}
     >
-      <motion.div
-        {...MOTION_PROPS}
-        inert={!(isChatOpen || isChatOpenUncontrolled)}
-        animate={isChatOpen || isChatOpenUncontrolled ? 'visible' : 'hidden'}
-        className="border-input/50 flex w-full items-start overflow-hidden border-b"
-      >
-        <AgentChatInput
-          chatOpen={isChatOpen || isChatOpenUncontrolled}
-          onSend={handleSendMessage}
-          className={cn(variant === 'livekit' && '[&_button]:rounded-full')}
-        />
-      </motion.div>
+
 
       <div className="flex gap-1">
         <div className="flex grow gap-1">
