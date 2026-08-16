@@ -1,4 +1,4 @@
-import { Fragment, type ComponentProps, useMemo, useState } from 'react';
+import { type ComponentProps, useMemo, useState } from 'react';
 import { type VariantProps, cva } from 'class-variance-authority';
 import { Track } from 'livekit-client';
 import {
@@ -43,22 +43,7 @@ export const agentTrackToggleVariants = cva(['size-9'], {
   },
 });
 
-function getSourceIcon(source: Track.Source, enabled: boolean, pending = false) {
-  if (pending) {
-    return LoaderIcon;
-  }
 
-  switch (source) {
-    case Track.Source.Microphone:
-      return enabled ? MicIcon : MicOffIcon;
-    case Track.Source.Camera:
-      return enabled ? VideoIcon : VideoOffIcon;
-    case Track.Source.ScreenShare:
-      return enabled ? MonitorUpIcon : MonitorOffIcon;
-    default:
-      return Fragment;
-  }
-}
 
 /**
  * Props for the AgentTrackToggle component.
@@ -132,7 +117,19 @@ export function AgentTrackToggle({
     () => (isControlled ? pressed : uncontrolledPressed) ?? false,
     [isControlled, pressed, uncontrolledPressed],
   );
-  const IconComponent = getSourceIcon(source as Track.Source, resolvedPressed, pending);
+  const iconClassName = cn(pending && 'animate-spin');
+  let iconElement = null;
+
+  if (pending) {
+    iconElement = <LoaderIcon className={iconClassName} />;
+  } else if (source === Track.Source.Microphone || source === ('microphone' as Track.Source)) {
+    iconElement = resolvedPressed ? <MicIcon className={iconClassName} /> : <MicOffIcon className={iconClassName} />;
+  } else if (source === Track.Source.Camera || source === ('camera' as Track.Source)) {
+    iconElement = resolvedPressed ? <VideoIcon className={iconClassName} /> : <VideoOffIcon className={iconClassName} />;
+  } else if (source === Track.Source.ScreenShare || source === ('screen_share' as Track.Source)) {
+    iconElement = resolvedPressed ? <MonitorUpIcon className={iconClassName} /> : <MonitorOffIcon className={iconClassName} />;
+  }
+
   const handlePressedChange = (nextPressed: boolean) => {
     if (!isControlled) {
       setUncontrolledPressed(nextPressed);
@@ -157,7 +154,7 @@ export function AgentTrackToggle({
       )}
       {...props}
     >
-      <IconComponent className={cn(pending && 'animate-spin')} />
+      {iconElement}
       {props.children}
     </Toggle>
   );

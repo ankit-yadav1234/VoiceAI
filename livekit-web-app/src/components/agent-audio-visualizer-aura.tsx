@@ -21,7 +21,7 @@ function hexToRgb(hexColor: string) {
 
       return color;
     }
-  } catch (error) {
+  } catch (_error) {
     console.error(
       `Invalid hex color '${hexColor}'.\nFalling back to default color '${DEFAULT_COLOR}'.`,
     );
@@ -398,6 +398,14 @@ export interface AgentAudioVisualizerAuraProps {
  * />
  * ```
  */
+const STATE_COLORS: Record<string, string> = {
+  listening: '#1FD5F9', // Electric Cyan
+  thinking: '#A855F7',  // Pulsing Purple
+  speaking: '#10B981',  // Vibrant Emerald Green
+  connecting: '#F59E0B',// Amber Gold
+  disconnected: '#64748B',
+};
+
 export function AgentAudioVisualizerAura({
   size = 'lg',
   state = 'connecting',
@@ -416,12 +424,14 @@ export function AgentAudioVisualizerAura({
     audioTrack,
   );
 
+  const activeColor = color === DEFAULT_COLOR && STATE_COLORS[state] ? STATE_COLORS[state] : color;
+
   return (
     <AuraShader
       ref={ref}
       data-lk-state={state}
       blur={0.2}
-      color={color}
+      color={activeColor}
       colorShift={colorShift}
       speed={speed}
       scale={scale}

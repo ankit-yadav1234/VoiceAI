@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Settings, Volume2, Mic, Activity, ShieldCheck, X, CheckCircle2, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -8,9 +8,24 @@ import { Button } from '@/components/ui/button';
 interface AgentSettingsModalProps {
   isOpen: boolean;
   onClose: () => void;
+  selectedVoice?: string;
+  onSelectVoice?: (voice: string) => void;
 }
 
-export function AgentSettingsModal({ isOpen, onClose }: AgentSettingsModalProps) {
+const AVAILABLE_VOICES = [
+  { id: 'Anyar', name: 'Anyar', description: 'Warm, natural & clear' },
+  { id: 'Kore', name: 'Kore', description: 'Smooth & friendly' },
+  { id: 'Puck', name: 'Puck', description: 'Energetic & dynamic' },
+  { id: 'Fenrir', name: 'Fenrir', description: 'Deep & authoritative' },
+  { id: 'Aoede', name: 'Aoede', description: 'Melodic & soft' },
+];
+
+export function AgentSettingsModal({
+  isOpen,
+  onClose,
+  selectedVoice = 'Anyar',
+  onSelectVoice,
+}: AgentSettingsModalProps) {
   const [isPlayingAudioTest, setIsPlayingAudioTest] = useState(false);
   const [micLevel, setMicLevel] = useState(0);
   const [isMicTesting, setIsMicTesting] = useState(false);
@@ -19,8 +34,8 @@ export function AgentSettingsModal({ isOpen, onClose }: AgentSettingsModalProps)
   // Play audio test ping
   const handleTestAudio = () => {
     try {
-      setIsPlayingAudioTest(true);
-      const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioContextClass = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+      const ctx = new AudioContextClass();
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
 
@@ -189,6 +204,38 @@ export function AgentSettingsModal({ isOpen, onClose }: AgentSettingsModalProps)
                 )}
               </div>
             </div>
+
+              {/* AI Voice Selection */}
+              <div className="p-4 rounded-2xl bg-slate-950/50 border border-slate-800/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <Volume2 className="w-5 h-5 text-purple-400" />
+                    <div>
+                      <h4 className="text-sm font-bold text-white">AI Voice Tone</h4>
+                      <p className="text-xs text-slate-400">Select real-time synthesized voice model</p>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-purple-400 bg-purple-500/10 px-2.5 py-1 rounded-full border border-purple-500/20">
+                    Active: {selectedVoice}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 pt-1">
+                  {AVAILABLE_VOICES.map((v) => (
+                    <button
+                      key={v.id}
+                      onClick={() => onSelectVoice && onSelectVoice(v.id)}
+                      className={`p-2.5 rounded-xl border text-left transition-all ${
+                        selectedVoice === v.id
+                          ? 'bg-purple-600/20 border-purple-500 text-white font-bold shadow-md'
+                          : 'bg-slate-900/50 border-slate-800 text-slate-300 hover:bg-slate-800/60 hover:text-white'
+                      }`}
+                    >
+                      <div className="text-xs font-bold">{v.name}</div>
+                      <div className="text-[10px] text-slate-400 truncate">{v.description}</div>
+                    </button>
+                  ))}
+                </div>
+              </div>
 
             {/* Pipeline Diagnostics */}
             <div className="p-4 rounded-2xl bg-slate-950/40 border border-slate-800/80 space-y-3">

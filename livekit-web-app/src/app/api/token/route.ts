@@ -5,16 +5,21 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
       const { searchParams } = new URL(request.url);
       const roomName = searchParams.get('room') || 'voice-room-' + Math.floor(Math.random() * 10000);
-      console.log(roomName);
       const participantName = searchParams.get('participant') || 'user-' + Math.floor(Math.random() * 1000);
-      console.log(participantName);
+      
+      const persona = searchParams.get('persona') || 'general';
+      const voice = searchParams.get('voice') || 'Anyar';
+      const prompt = searchParams.get('prompt') || '';
 
       if (!process.env.LIVEKIT_API_KEY || !process.env.LIVEKIT_API_SECRET || !process.env.LIVEKIT_URL) {
             return NextResponse.json({ error: 'LiveKit configuration missing' }, { status: 500 });
       }
 
+      const metadataJson = JSON.stringify({ persona, voice, prompt });
+
       const at = new AccessToken(process.env.LIVEKIT_API_KEY, process.env.LIVEKIT_API_SECRET, {
             identity: participantName,
+            metadata: metadataJson,
       });
 
       at.addGrant({
@@ -25,10 +30,11 @@ export async function GET(request: Request) {
             canPublishData: true,
       });
 
-      (at as any).roomConfig = new RoomConfiguration({
+      (at as unknown as { roomConfig: RoomConfiguration }).roomConfig = new RoomConfiguration({
             agents: [
                   new RoomAgentDispatch({
                         agentName: 'my-agent',
+                        metadata: metadataJson,
                   }),
             ],
       });
@@ -39,3 +45,4 @@ export async function GET(request: Request) {
             roomName: roomName,
       });
 }
+

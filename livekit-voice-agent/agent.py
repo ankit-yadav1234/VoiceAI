@@ -37,6 +37,7 @@ from livekit.plugins import (
 from livekit.plugins.turn_detector.multilingual import MultilingualModel
 from livekit.plugins import google
 from prompt import SYSTEM_PROMPT, WELCOME_MESSAGE, AGENT_CONFIG
+from agent_registry import AGENT_REGISTRY
 
 logger = logging.getLogger("agent-dummyCode")
 
@@ -50,14 +51,13 @@ Settings.embed_model = GoogleGenAIEmbedding(model_name="models/gemini-embedding-
 
 
 class DefaultAgent(Agent):
-    def __init__(self) -> None:
-        super().__init__(
-            instructions=SYSTEM_PROMPT,
-        )
+    def __init__(self, greeting: str = None) -> None:
+        super().__init__()
+        self.greeting = greeting or WELCOME_MESSAGE
 
     async def on_enter(self):
         await self.session.generate_reply(
-            instructions=f"Greet the user warmly with exact words: '{WELCOME_MESSAGE}'",
+            instructions=f"Greet the user warmly with exact words: '{self.greeting}'",
             allow_interruptions=True,
         )
 
@@ -117,66 +117,102 @@ def get_index():
 
 
 @llm.function_tool
-async def query_info(query: str) -> str:
-    """Search internal knowledge base files ONLY when user explicitly asks about uploaded files or internal project documents."""
-    idx = get_index()
-    retriever = idx.as_retriever(similarity_top_k=3)
-    nodes = await retriever.aretrieve(query)
-    if not nodes:
-        return "No relevant information found."
-    # Return the raw text chunks — let the Realtime model summarize
-    results = []
-    for node in nodes:
-        results.append(node.get_content())
-    combined = "\n\n---\n\n".join(results)
-    logger.info(f"Retrieved {len(nodes)} chunks for query: {query}")
-    return combined
+async def web_search(query: str) -> str:
+    """Search the live web for real-time information, news, weather, or current facts."""
+    logger.info(f"Executing live web search for: {query}")
+    try:
+        import urllib.parse
+        import re
+        import aiohttp
+
+        url = f"https://html.duckduckgo.com/html/?q={urllib.parse.quote(query)}"
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)"}
+        async with aiohttp.ClientSession() as http_session:
+            async with http_session.get(url, headers=headers, timeout=5) as response:
+                if response.status == 200:
+                    text = await response.text()
+                    snippets = re.findall(r'<a class="result__snippet[^>]*>(.*?)</a>', text, re.DOTALL)
+                    if snippets:
+                        clean_snippets = [re.sub(r'<[^>]+>', '', s).strip() for s in snippets[:3]]
+                        result_text = "\n\n".join(clean_snippets)
+                        return f"Live Web Search Results:\n{result_text}"
+        return "No clear search results found on the web."
+    except Exception as e:
+        logger.error(f"Web search error: {e}")
+        return f"Could not perform web search: {str(e)}"
 
 
-
-def get_resilient_llm():
-    """Builds a resilient LLM with FallbackAdapter, supporting primary to secondary failover and chaos testing."""
+def get_resilient_llm(instructions: str = None, voice: str = None):
+    """Builds a resilient LLM with FallbackAdapter, supporting primary to secondary failover and dynamic voice/persona metadata."""
     enable_chaos = AGENT_CONFIG.get("enable_chaos_test", False)
     primary_model = "invalid-chaos-model-name" if enable_chaos else AGENT_CONFIG.get("primary_model", "gemini-2.5-flash-native-audio-preview-12-2025")
     fallback_model = AGENT_CONFIG.get("fallback_model", "gemini-2.5-flash-native-audio-preview-12-2025")
+
+    target_instructions = instructions or SYSTEM_PROMPT
+    target_voice = voice or AGENT_CONFIG.get("voice", "Anyar")
 
     if enable_chaos:
         logger.warning("[CHAOS TEST] Chaos mode active: Primary model set to invalid name to verify fallback failover.")
 
     try:
-        logger.info(f"Initializing primary Realtime LLM ({primary_model})...")
+        logger.info(f"Initializing primary Realtime LLM ({primary_model}) [voice={target_voice}]...")
         return google.realtime.RealtimeModel(
             model=primary_model,
-            voice=AGENT_CONFIG["voice"],
+            voice=target_voice,
             temperature=AGENT_CONFIG["temperature"],
-            instructions=SYSTEM_PROMPT,
+            instructions=target_instructions,
         )
     except Exception as err:
         logger.error(f"Primary model initialization failed: {err}. Degrading gracefully to fallback model ({fallback_model}).")
         return google.realtime.RealtimeModel(
             model=fallback_model,
-            voice=AGENT_CONFIG["voice"],
+            voice=target_voice,
             temperature=AGENT_CONFIG["temperature"],
-            instructions=SYSTEM_PROMPT,
+            instructions=target_instructions,
         )
 
 server = AgentServer()
 
 @server.rtc_session(agent_name=AGENT_CONFIG["agent_name"])
 async def entrypoint(ctx: JobContext):
-    # Initialize Realtime Session with ultra-low latency & preemptive generation flags
+    import json
+
+    # Extract dynamic metadata (Persona prompt & Voice) from Job metadata or Room metadata
+    custom_instructions = SYSTEM_PROMPT
+    custom_voice = AGENT_CONFIG.get("voice", "Anyar")
+    custom_greeting = AGENT_REGISTRY["elly"]["greeting"]  # Default greeting: Elly from Eligibility!
+
+    raw_metadata = None
+    if ctx.job and ctx.job.metadata:
+        raw_metadata = ctx.job.metadata
+    elif ctx.room and ctx.room.metadata:
+        raw_metadata = ctx.room.metadata
+
+    if raw_metadata:
+        try:
+            meta = json.loads(raw_metadata)
+            persona_id = (meta.get("persona") or "elly").lower()
+            reg_agent = AGENT_REGISTRY.get(persona_id) or AGENT_REGISTRY["elly"]
+
+            custom_instructions = f"{SYSTEM_PROMPT}\n\n[ACTIVE AGENT: {reg_agent['name']} | DEPARTMENT: {reg_agent['department']}]\n{reg_agent['system_prompt']}"
+            custom_voice = meta.get("voice") or reg_agent["voice"]
+            custom_greeting = reg_agent.get("greeting", custom_greeting)
+            logger.info(f"Loaded Enterprise Agent: {reg_agent['name']} ({reg_agent['department']}) [Voice: {custom_voice}]")
+        except Exception as err:
+            logger.warning(f"Could not parse room/job metadata JSON: {err}")
+
+    # Initialize Realtime Session with instant speech-to-speech turn-taking (<50ms) & instant barge-in interruption
     session = AgentSession(
-        llm=get_resilient_llm(),
-        tools=[query_info],
+        llm=get_resilient_llm(instructions=custom_instructions, voice=custom_voice),
+        vad=silero.VAD.load(min_speech_duration=0.05, min_silence_duration=0.1),
+        tools=[query_info, web_search],
         preemptive_generation=True,
-        min_endpointing_delay=0.15,
-        max_endpointing_delay=1.2,
+        min_endpointing_delay=0.05,  # 50ms sub-instant response starter
+        max_endpointing_delay=0.3,   # 300ms max endpoint delay
     )
 
-
-
     await session.start(
-        agent=DefaultAgent(),
+        agent=DefaultAgent(greeting=custom_greeting),
         room=ctx.room,
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(

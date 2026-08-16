@@ -27,19 +27,22 @@ export function useAgentAudioVisualizerBarAnimator(
   const [sequence, setSequence] = useState<number[][]>([[]]);
 
   useEffect(() => {
-    if (state === 'thinking') {
-      setSequence(generateListeningSequenceBar(columns));
-    } else if (state === 'connecting' || state === 'initializing') {
-      const sequence = [...generateConnectingSequenceBar(columns)];
-      setSequence(sequence);
-    } else if (state === 'listening') {
-      setSequence(generateListeningSequenceBar(columns));
-    } else if (state === undefined || state === 'speaking') {
-      setSequence([new Array(columns).fill(0).map((_, idx) => idx)]);
-    } else {
-      setSequence([[]]);
-    }
-    setIndex(0);
+    const animId = requestAnimationFrame(() => {
+      if (state === 'thinking') {
+        setSequence(generateListeningSequenceBar(columns));
+      } else if (state === 'connecting' || state === 'initializing') {
+        const sequence = [...generateConnectingSequenceBar(columns)];
+        setSequence(sequence);
+      } else if (state === 'listening') {
+        setSequence(generateListeningSequenceBar(columns));
+      } else if (state === undefined || state === 'speaking') {
+        setSequence([new Array(columns).fill(0).map((_, idx) => idx)]);
+      } else {
+        setSequence([[]]);
+      }
+      setIndex(0);
+    });
+    return () => cancelAnimationFrame(animId);
   }, [state, columns]);
 
   const animationFrameId = useRef<number | null>(null);

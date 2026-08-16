@@ -39,9 +39,10 @@ export async function POST(request: Request) {
             console.log('Dispatch created successfully:', dispatch.id);
 
             return NextResponse.json({ dispatch });
-      } catch (error: any) {
-            console.error('DISPATCH ERROR DETAIL:', error);
-            return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+      } catch (error: unknown) {
+            const err = error as Error;
+            console.error('DISPATCH ERROR DETAIL:', err);
+            return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
       }
 }
 
@@ -68,9 +69,10 @@ export async function GET(request: Request) {
             console.log(`There are ${dispatches.length} dispatches in ${roomName}`);
 
             return NextResponse.json({ dispatches });
-      } catch (error: any) {
-            console.error('List dispatch error:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+      } catch (error: unknown) {
+            const err = error as Error;
+            console.error('List dispatch error:', err);
+            return NextResponse.json({ error: err.message }, { status: 500 });
       }
 }
 
@@ -101,8 +103,9 @@ export async function DELETE(request: Request) {
             console.log(`Deleted dispatch ${dispatchId} in ${roomName}`);
 
             return NextResponse.json({ success: true });
-      } catch (error: any) {
-            console.error('Delete dispatch error:', error);
-            return NextResponse.json({ error: error.message }, { status: 500 });
+      } catch (error: unknown) {
+            const err = error as Error;
+            console.error('Delete dispatch error:', err);
+            return NextResponse.json({ error: err.message }, { status: 500 });
       }
 }

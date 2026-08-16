@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback, useMemo, useEffect } from 'react';
+import Image from 'next/image';
 import {
   LiveKitRoom,
   RoomAudioRenderer,
@@ -18,9 +19,10 @@ import { AgentAudioVisualizerBar } from '@/components/agent-audio-visualizer-bar
 import { AgentChatTranscript } from '@/components/agent-chat-transcript';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { AgentPersonaModal, PERSONAS, Persona } from '@/components/agent-persona-modal';
 import { AgentSettingsModal } from '@/components/agent-settings-modal';
+import { AgentVideoAvatarPresentation } from '@/components/agent-video-avatar-presentation';
+import { AIChatWidget } from '@/components/ai-chat-widget';
 import {
   Loader2,
   Send,
@@ -58,8 +60,11 @@ export default function Home() {
   // Modals state
   const [isPersonaModalOpen, setIsPersonaModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [isVideoAvatarOpen, setIsVideoAvatarOpen] = useState(false);
   const [selectedPersona, setSelectedPersona] = useState<Persona>(PERSONAS[0]);
+  const [selectedVoice, setSelectedVoice] = useState<string>('Anyar');
   const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [agentState, setAgentState] = useState<'listening' | 'thinking' | 'speaking' | 'idle'>('idle');
 
   const onConnect = useCallback(async (initialPrompt?: string) => {
     if (typeof window !== 'undefined' && !window.isSecureContext && window.location.hostname !== 'localhost') {
@@ -74,13 +79,20 @@ export default function Home() {
     }
 
     try {
-      const response = await fetch('/api/token');
+      const queryParams = new URLSearchParams({
+        persona: selectedPersona.id,
+        voice: selectedVoice,
+        prompt: selectedPersona.systemPrompt,
+      });
+
+      const response = await fetch(`/api/token?${queryParams.toString()}`);
       const data = await response.json();
       
       setConnectionDetails({
         token: data.token,
         url: data.url,
       });
+      setIsVideoAvatarOpen(true);
 
       fetch('/api/dispatch', {
         method: 'POST',
@@ -88,6 +100,11 @@ export default function Home() {
         body: JSON.stringify({
           roomName: data.roomName,
           agentName: 'my-agent',
+          metadata: {
+            persona: selectedPersona.id,
+            voice: selectedVoice,
+            prompt: selectedPersona.systemPrompt,
+          },
         }),
       }).catch(err => console.log('Dispatch background notice:', err));
     } catch (e) {
@@ -95,7 +112,7 @@ export default function Home() {
     } finally {
       setIsConnecting(false);
     }
-  }, []);
+  }, [selectedPersona, selectedVoice]);
 
   const onDisconnect = useCallback(() => {
     setConnectionDetails(null);
@@ -163,159 +180,197 @@ export default function Home() {
 
       <main className="flex-1 flex flex-col items-center justify-center p-4">
         <AnimatePresence mode="wait">
-          {!connectionDetails ? (
-            <motion.div
-              key="hero"
-              initial={{ opacity: 0, scale: 0.96 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 1.04 }}
-              className="z-10 max-w-3xl w-full text-center space-y-8 py-12 md:py-16"
-            >
-              <div className="space-y-4">
-                <motion.div
-                  initial={{ opacity: 0, y: 15 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.1 }}
-                  className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-blue-400 text-xs font-semibold shadow-lg"
-                >
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  Active Mode: <span className="text-white font-bold">{selectedPersona.name}</span> ({selectedPersona.role})
-                </motion.div>
-
-                <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter text-white leading-[1.1]">
-                  Next-Gen <br />
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-indigo-400 bg-[length:200%_auto] animate-[gradient_4s_linear_infinite]">
-                    Voice Intelligence.
-                  </span>
-                </h1>
-                <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
-                  Real-time low-latency voice AI powered by LiveKit & Gemini. Speaks, understands context, and responds in under 100 milliseconds.
-                </p>
-              </div>
-
-              {/* Start Button */}
-              <div className="pt-2 flex flex-col items-center gap-3">
-                <Button
-                  size="lg"
-                  onClick={() => onConnect()}
-                  disabled={isConnecting}
-                  className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white px-10 h-14 text-lg rounded-2xl transition-all shadow-xl shadow-blue-500/25 active:scale-95 group font-bold"
-                >
-                  {isConnecting ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Connecting Agent...
-                    </>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      Start Voice Session
-                      <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-                    </span>
-                  )}
-                </Button>
-              </div>
-
-              {/* Quick Interactive Prompt Chips */}
-              <div className="pt-4 max-w-2xl mx-auto space-y-2.5">
-                <p className="text-xs font-bold uppercase tracking-wider text-slate-500">
-                  Or click a quick starter prompt to connect:
-                </p>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  {QUICK_PROMPTS.map((qp, idx) => {
-                    const Icon = qp.icon;
-                    return (
-                      <button
-                        key={idx}
-                        onClick={() => onConnect(qp.prompt)}
-                        className="flex items-center gap-2.5 p-3 rounded-2xl bg-slate-900/60 border border-slate-800/80 hover:border-slate-700 hover:bg-slate-800/60 text-slate-300 hover:text-white text-xs font-semibold text-left transition-all group"
-                      >
-                        <div className="p-1.5 rounded-lg bg-blue-500/10 text-blue-400 group-hover:text-emerald-400 transition-colors">
-                          <Icon className="w-3.5 h-3.5" />
-                        </div>
-                        <span className="flex-1 truncate">{qp.text}</span>
-                        <ArrowRight className="w-3.5 h-3.5 text-slate-500 group-hover:text-white transition-colors" />
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Features Pill Grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-white/5 text-slate-400">
-                <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
-                  <div className="text-base font-bold text-white flex items-center justify-center gap-1">
-                    <Zap className="w-4 h-4 text-emerald-400" />
-                    &lt; 50ms
-                  </div>
-                  <div className="text-[11px] font-medium text-slate-500">Ultra-low Latency</div>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
-                  <div className="text-base font-bold text-white flex items-center justify-center gap-1">
-                    <Volume2 className="w-4 h-4 text-blue-400" />
-                    HD Audio
-                  </div>
-                  <div className="text-[11px] font-medium text-slate-500">OPUS 48kHz Codec</div>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
-                  <div className="text-base font-bold text-white flex items-center justify-center gap-1">
-                    <Shield className="w-4 h-4 text-purple-400" />
-                    Encrypted
-                  </div>
-                  <div className="text-[11px] font-medium text-slate-500">AES-GCM Security</div>
-                </div>
-                <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
-                  <div className="text-base font-bold text-white flex items-center justify-center gap-1">
-                    <CheckCircle2 className="w-4 h-4 text-amber-400" />
-                    Live Sync
-                  </div>
-                  <div className="text-[11px] font-medium text-slate-500">STT + TTS Transcript</div>
-                </div>
-              </div>
-
-              {insecureError && (
-                <div className="mt-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-in fade-in">
-                  <p className="font-bold mb-1">Security Restriction:</p>
-                  Microphone access requires <strong>HTTPS</strong> or <strong>localhost</strong>.
-                  Please open <code className="bg-red-500/20 px-1.5 py-0.5 rounded text-white">http://localhost:3000</code>.
-                </div>
-              )}
-            </motion.div>
-          ) : (
-            <motion.div
-              key="app"
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="w-full max-w-6xl mx-auto py-4"
-            >
-              <LiveKitRoom
-                serverUrl={connectionDetails.url}
-                token={connectionDetails.token}
-                connect={true}
-                audio={true}
-                className="w-full"
-                onDisconnected={onDisconnect}
-                onError={(e) => {
-                  console.error("LiveKit Room Error:", e);
-                  if (e.message.toLowerCase().includes("getusermedia") || e.message.toLowerCase().includes("secure context")) {
-                    setInsecureError(true);
-                    onDisconnect();
-                  }
-                }}
+          <motion.div
+            key="hero"
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="z-10 max-w-3xl w-full text-center space-y-8 py-12 md:py-16"
+          >
+            <div className="space-y-4">
+              <motion.div
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.1 }}
+                className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-slate-900/90 border border-slate-700/80 text-blue-400 text-xs font-semibold shadow-lg"
               >
-                <RoomAudioRenderer />
-                <SessionWrapper
-                  connectionDetails={connectionDetails}
-                  onDisconnect={onDisconnect}
-                  selectedPersona={selectedPersona}
-                  pendingPrompt={pendingPrompt}
-                  onClearPendingPrompt={() => setPendingPrompt(null)}
-                />
-              </LiveKitRoom>
-            </motion.div>
-          )}
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                Active Mode: <span className="text-white font-bold">{selectedPersona.name}</span> ({selectedPersona.role})
+              </motion.div>
+
+              <h1 className="text-4xl sm:text-6xl md:text-7xl font-extrabold tracking-tighter text-white leading-[1.1]">
+                Next-Gen <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-emerald-400 to-indigo-400 bg-[length:200%_auto] animate-[gradient_4s_linear_infinite]">
+                  Voice Intelligence.
+                </span>
+              </h1>
+              <p className="text-slate-400 text-base sm:text-lg max-w-xl mx-auto leading-relaxed">
+                Real-time low-latency voice AI powered by LiveKit & Gemini. Speaks, understands context, and responds in under 100 milliseconds.
+              </p>
+            </div>
+
+            {/* Start Button */}
+            <div className="pt-2 flex flex-col items-center gap-3">
+              <Button
+                size="lg"
+                onClick={() => onConnect()}
+                disabled={isConnecting}
+                className="bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white px-10 h-14 text-lg rounded-2xl transition-all shadow-xl shadow-blue-500/25 active:scale-95 group font-bold"
+              >
+                {isConnecting ? (
+                  <>
+                    <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                    Connecting Agent...
+                  </>
+                ) : (
+                  <span className="flex items-center gap-2">
+                    Start Voice Session
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </span>
+                )}
+              </Button>
+            </div>
+
+            {/* 9 Enterprise AI Agents Selector Grid (Matching User Reference Design) */}
+            <div className="pt-8 max-w-4xl mx-auto space-y-6 border-t border-white/10">
+              <div className="space-y-1 text-center">
+                <h3 className="text-sm font-bold uppercase tracking-widest text-cyan-400">
+                  Enterprise AI Agent Roster
+                </h3>
+                <p className="text-xs text-slate-400">
+                  Click on any agent to start a conversation
+                </p>
+              </div>
+
+              {/* Top 5 Agents Row */}
+              <div className="grid grid-cols-3 sm:grid-cols-5 gap-4 justify-items-center">
+                {PERSONAS.slice(0, 5).map((agent) => {
+                  const isSelected = selectedPersona.id === agent.id;
+                  return (
+                    <button
+                      key={agent.id}
+                      onClick={() => {
+                        setSelectedPersona(agent);
+                        onConnect();
+                      }}
+                      className="group flex flex-col items-center space-y-2 text-center transition-all duration-300 focus:outline-none"
+                    >
+                      <div className="relative">
+                        <div
+                          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 transition-all duration-300 shadow-xl ${
+                            isSelected
+                              ? 'border-cyan-400 ring-4 ring-cyan-400/30 scale-110 shadow-cyan-500/50'
+                              : 'border-cyan-500/60 group-hover:border-cyan-400 group-hover:scale-105 group-hover:shadow-cyan-500/40'
+                          }`}
+                        >
+                          <Image
+                            src={agent.avatar}
+                            alt={agent.name}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                          {agent.name}
+                        </h4>
+                        <span className="text-[11px] font-semibold text-slate-400 block">
+                          {agent.department}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Bottom 4 Agents Row */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 justify-items-center max-w-2xl mx-auto">
+                {PERSONAS.slice(5).map((agent) => {
+                  const isSelected = selectedPersona.id === agent.id;
+                  return (
+                    <button
+                      key={agent.id}
+                      onClick={() => {
+                        setSelectedPersona(agent);
+                        onConnect();
+                      }}
+                      className="group flex flex-col items-center space-y-2 text-center transition-all duration-300 focus:outline-none"
+                    >
+                      <div className="relative">
+                        <div
+                          className={`w-20 h-20 sm:w-24 sm:h-24 rounded-full overflow-hidden border-2 transition-all duration-300 shadow-xl ${
+                            isSelected
+                              ? 'border-cyan-400 ring-4 ring-cyan-400/30 scale-110 shadow-cyan-500/50'
+                              : 'border-cyan-500/60 group-hover:border-cyan-400 group-hover:scale-105 group-hover:shadow-cyan-500/40'
+                          }`}
+                        >
+                          <Image
+                            src={agent.avatar}
+                            alt={agent.name}
+                            width={96}
+                            height={96}
+                            className="w-full h-full object-cover object-center"
+                          />
+                        </div>
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-extrabold text-white group-hover:text-cyan-300 transition-colors">
+                          {agent.name}
+                        </h4>
+                        <span className="text-[11px] font-semibold text-slate-400 block">
+                          {agent.department}
+                        </span>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Features Pill Grid */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-8 border-t border-white/5 text-slate-400">
+              <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
+                <div className="text-base font-bold text-white flex items-center justify-center gap-1">
+                  <Zap className="w-4 h-4 text-emerald-400" />
+                  &lt; 50ms
+                </div>
+                <div className="text-[11px] font-medium text-slate-500">Ultra-low Latency</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
+                <div className="text-base font-bold text-white flex items-center justify-center gap-1">
+                  <Volume2 className="w-4 h-4 text-blue-400" />
+                  HD Audio
+                </div>
+                <div className="text-[11px] font-medium text-slate-500">OPUS 48kHz Codec</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
+                <div className="text-base font-bold text-white flex items-center justify-center gap-1">
+                  <Shield className="w-4 h-4 text-purple-400" />
+                  Encrypted
+                </div>
+                <div className="text-[11px] font-medium text-slate-500">AES-GCM Security</div>
+              </div>
+              <div className="p-3 rounded-2xl bg-slate-900/30 border border-white/5 text-center space-y-1">
+                <div className="text-base font-bold text-white flex items-center justify-center gap-1">
+                  <CheckCircle2 className="w-4 h-4 text-amber-400" />
+                  Live Sync
+                </div>
+                <div className="text-[11px] font-medium text-slate-500">STT + TTS Transcript</div>
+              </div>
+            </div>
+
+            {insecureError && (
+              <div className="mt-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm animate-in fade-in">
+                <p className="font-bold mb-1">Security Restriction:</p>
+                Microphone access requires <strong>HTTPS</strong> or <strong>localhost</strong>.
+                Please open <code className="bg-red-500/20 px-1.5 py-0.5 rounded text-white">http://localhost:3000</code>.
+              </div>
+            )}
+          </motion.div>
         </AnimatePresence>
       </main>
 
@@ -359,6 +414,20 @@ export default function Home() {
         </div>
       </footer>
 
+      {/* Background LiveKit Voice Connection */}
+      {connectionDetails && (
+        <LiveKitRoom
+          serverUrl={connectionDetails.url}
+          token={connectionDetails.token}
+          connect={true}
+          audio={true}
+          onDisconnected={onDisconnect}
+        >
+          <RoomAudioRenderer />
+          <AssistantStateTracker onStateChange={setAgentState} />
+        </LiveKitRoom>
+      )}
+
       {/* Modals */}
       <AgentPersonaModal
         isOpen={isPersonaModalOpen}
@@ -370,9 +439,46 @@ export default function Home() {
       <AgentSettingsModal
         isOpen={isSettingsModalOpen}
         onClose={() => setIsSettingsModalOpen(false)}
+        selectedVoice={selectedVoice}
+        onSelectVoice={(v) => setSelectedVoice(v)}
+      />
+
+      {/* Floating Bottom-Right AI Dock */}
+      <AIChatWidget
+        persona={selectedPersona}
+        onOpenVideoAvatar={() => {
+          if (!connectionDetails) {
+            onConnect();
+          }
+          setIsVideoAvatarOpen(true);
+        }}
+      />
+
+      {/* Interactive Animated Video Avatar Screen (Image 1) */}
+      <AgentVideoAvatarPresentation
+        isOpen={isVideoAvatarOpen}
+        onClose={() => setIsVideoAvatarOpen(false)}
+        persona={selectedPersona}
+        agentState={agentState}
+        onDisconnect={onDisconnect}
       />
     </div>
   );
+}
+
+/** Assistant State Listener */
+function AssistantStateTracker({
+  onStateChange,
+}: {
+  onStateChange: (state: 'listening' | 'thinking' | 'speaking' | 'idle') => void;
+}) {
+  const { state } = useVoiceAssistant();
+  useEffect(() => {
+    if (state) {
+      onStateChange(state as 'listening' | 'thinking' | 'speaking' | 'idle');
+    }
+  }, [state, onStateChange]);
+  return null;
 }
 
 /** Session Wrapper */
@@ -392,7 +498,7 @@ function SessionWrapper({
   const tokenSource = useMemo(() => TokenSource.literal({
     token: connectionDetails.token,
     url: connectionDetails.url,
-  } as any), [connectionDetails]);
+  } as unknown as Parameters<typeof TokenSource.literal>[0]), [connectionDetails]);
   const session = useSession(tokenSource);
 
   useEffect(() => {
@@ -438,48 +544,66 @@ function AssistantContent({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch w-full max-w-7xl mx-auto px-2 md:px-4">
       {/* Left Column - Visualizer & Session Status */}
-      <div className="lg:col-span-7 space-y-6 flex flex-col">
+      <div className="lg:col-span-7 flex flex-col min-h-[480px] sm:min-h-[560px] lg:min-h-[680px]">
         <Card className="glass-card glass-card-hover border-slate-800/80 flex-1 flex flex-col overflow-hidden relative group shadow-2xl transition-all duration-500 hover:border-slate-700/80">
           <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-blue-500 via-emerald-500 to-indigo-500 opacity-75" />
 
-          <CardHeader className="pb-4 border-b border-white/5 bg-slate-900/50 backdrop-blur-md">
+          <CardHeader className="pb-4 border-b border-white/5 bg-slate-900/50 backdrop-blur-md shrink-0">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_10px_rgba(16,185,129,0.8)]" />
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full overflow-hidden border-2 border-cyan-400/80 shadow-md shadow-cyan-500/20 shrink-0">
+                    <Image
+                      src={selectedPersona.avatar}
+                      alt={selectedPersona.name}
+                      width={40}
+                      height={40}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full bg-emerald-500 border-2 border-slate-900 animate-pulse" />
+                </div>
                 <div>
-                  <CardTitle className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-slate-300 group-hover:text-white transition-colors">
-                    Active Voice Session
-                  </CardTitle>
-                  <p className="text-[11px] text-emerald-400 font-semibold">Mode: {selectedPersona.name}</p>
+                  <div className="flex items-center gap-2">
+                    <CardTitle className="text-sm font-extrabold text-white">
+                      {selectedPersona.name}
+                    </CardTitle>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                      {selectedPersona.department}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-400 font-medium">
+                    Role: {selectedPersona.role} • Voice: <strong className="text-cyan-400">{selectedPersona.defaultVoice}</strong>
+                  </p>
                 </div>
               </div>
               <ConnectionStatus />
             </div>
           </CardHeader>
 
-          <CardContent className="flex-1 flex flex-col items-center justify-center relative py-10 md:py-14">
+          <CardContent className="flex-1 flex flex-col items-center justify-center relative py-6 sm:py-10 md:py-14">
             <div className="absolute inset-0 bg-mesh opacity-25 pointer-events-none" />
 
-            <div className="relative flex items-center justify-center p-8 rounded-full border border-white/5 bg-white/[0.02] shadow-inner">
-              <AgentAudioVisualizerAura className="w-[260px] h-[260px] sm:w-[300px] sm:h-[300px] md:w-[350px] md:h-[350px]" />
+            <div className="relative flex items-center justify-center p-6 sm:p-8 rounded-full border border-white/5 bg-white/[0.02] shadow-inner">
+              <AgentAudioVisualizerAura className="w-[200px] h-[200px] sm:w-[280px] sm:h-[280px] md:w-[340px] md:h-[340px]" />
               <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                 <AgentStateText />
               </div>
             </div>
 
-            <div className="mt-8 z-10 w-full max-w-md px-6">
-              <AgentAudioVisualizerBar className="w-full h-10 opacity-90" />
+            <div className="mt-6 sm:mt-8 z-10 w-full max-w-md px-4 sm:px-6">
+              <AgentAudioVisualizerBar className="w-full h-8 sm:h-10 opacity-90" />
             </div>
           </CardContent>
 
-          <CardHeader className="pt-0 pb-6 border-t border-white/5 bg-slate-900/40">
-            <div className="pt-4 px-2 flex justify-center">
+          <CardHeader className="pt-0 pb-5 border-t border-white/5 bg-slate-900/40 shrink-0">
+            <div className="pt-3 px-2 flex justify-center">
               <AgentControlBar
                 variant="livekit"
                 isConnected={true}
                 onDisconnect={onDisconnect}
                 controls={{ chat: false }}
-                className="border-none bg-transparent p-0 drop-shadow-none scale-110 origin-center justify-center"
+                className="border-none bg-transparent p-0 drop-shadow-none scale-105 sm:scale-110 origin-center justify-center"
               />
             </div>
           </CardHeader>
@@ -488,7 +612,7 @@ function AssistantContent({
 
       {/* Right Column - Chat & Transcript */}
       <div className="lg:col-span-5 flex flex-col">
-        <div className="h-[680px] sm:h-[720px] lg:h-[740px] flex flex-col">
+        <div className="h-[520px] sm:h-[600px] lg:h-[680px] flex flex-col">
           <Card className="glass-card glass-card-hover border-slate-800/80 flex-1 flex flex-col overflow-hidden shadow-2xl relative transition-all duration-500 hover:border-slate-700/80">
             <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 to-blue-500 opacity-60" />
             
@@ -512,10 +636,8 @@ function AssistantContent({
               </div>
             </CardHeader>
 
-            <CardContent className="flex-1 p-0 overflow-hidden relative flex flex-col bg-slate-950/40">
-              <ScrollArea className="flex-1 p-4 sm:p-5">
-                <AssistantTranscript />
-              </ScrollArea>
+            <CardContent className="flex-1 min-h-0 p-0 overflow-hidden relative flex flex-col bg-slate-950/40">
+              <AssistantTranscript />
               
               {/* Interactive Live Input Form */}
               <AgentChatInput
@@ -562,7 +684,7 @@ function AgentChatInput({
   };
 
   return (
-    <div className="p-3 sm:p-4 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl shrink-0 space-y-2">
+    <div className="p-3 sm:p-4 border-t border-slate-800/80 bg-slate-950/95 backdrop-blur-xl shrink-0 sticky bottom-0 z-20 space-y-2">
       {/* Quick Prompts Bar inside Chat */}
       <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
         {QUICK_PROMPTS.slice(0, 3).map((qp, i) => (
@@ -628,7 +750,7 @@ function AgentStateText() {
         {current.text}
       </span>
       {state === 'listening' && (
-        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 font-black">Go ahead, I'm listening</span>
+        <span className="text-[10px] uppercase tracking-[0.4em] text-slate-400 font-black">Go ahead, I&apos;m listening</span>
       )}
     </motion.div>
   );
@@ -661,7 +783,8 @@ function AssistantTranscript() {
   return (
     <AgentChatTranscript
       messages={messages.map(m => {
-        const text = (m as any).message || (m as any).text || '';
+        const msgItem = m as unknown as Record<string, unknown>;
+        const text = String(msgItem.message || msgItem.text || '');
         let sender: 'user' | 'agent' = 'agent';
 
         if (m.type === 'userTranscript') {
